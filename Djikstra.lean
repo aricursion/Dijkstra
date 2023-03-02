@@ -141,8 +141,8 @@ instance [OrderedMonadTrans T] [LawfulOrderedMonadTrans T] : DijkstraMonad (T Id
 
 variable (σ : Type)
 
-def DijkstraVerify M [Monad M] W [OMonad W] (obs : ∀ {A}, M A → W A) A (w : W A) (m : M A)  : Prop :=
-  obs m ≤ w
+def DijkstraVerify M [Monad M] W [OMonad W] [LawfulOMonad W] [D : DijkstraMonad M W] A (w : W A) (m : M A)  : Prop :=
+  D.obs m ≤ w
 
 
 def IdObs {A : Type} (a : Id A) : IDSpec A := ⟨fun p => p a , by
@@ -166,4 +166,5 @@ def encodeNatPre (p : Nat → Prop): IDSpec Nat := ⟨fun (q : Nat → Prop) => 
 ⟩
 
 
-#check DijkstraVerify Id IDSpec IdObs Nat gt0 (do return 0)
+
+#check DijkstraVerify Id IDSpec Nat gt0 (do return 0)
