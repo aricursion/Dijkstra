@@ -89,9 +89,6 @@ instance [OMonad m] [OrderedMonadTrans T] : OMonad (T m) where
 class LawfulOrderedMonadTrans (T) [OrderedMonadTrans T] extends LawfulMonadTrans T where
   lift_mono : [OMonad M] → [LawfulOMonad M] → ∀ {m1 m2 : M α}, m1 ≤ m2 → MonadTrans.lift (T := T) m1 ≤ MonadTrans.lift m2
 
--- @[ext] theorem IdSpecTrans.ext [OrderedMonadTrans T] [LawfulOrderedMonadTrans T] 
---   (s1 s2 : (T IDSpec) p) : s1 = s2 := by sorry
-
 
 instance : OrderedMonadTrans (StateT σ) where
   pure := pure
@@ -144,9 +141,29 @@ instance [OrderedMonadTrans T] [LawfulOrderedMonadTrans T] : DijkstraMonad (T Id
 
 variable (σ : Type)
 
--- so true
-#synth DijkstraMonad (StateM σ) (StateT σ IDSpec)
+def DijkstraVerify M [Monad M] W [OMonad W] (obs : ∀ {A}, M A → W A) A (w : W A) (m : M A)  : Prop :=
+  obs m ≤ w
 
 
-def DijkstraVerify M [Monad M] W [OMonad W] (θ : ∀ {A}, M A → W A) A (w : W A) (m : M A)  : Prop :=
-  θ m ≤ w
+def IdObs {A : Type} (a : Id A) : IDSpec A := ⟨fun p => p a , by
+  intro p1 p2 p3 p4
+  exact p3 a p4
+  ⟩
+
+
+def gt0 : IDSpec (Nat) := ⟨fun (p : Nat → Prop) => (∀ n, n > 0 → p n), 
+  by
+  intros p1 _ p3 p4 n ng0
+  specialize p4 n ng0
+  exact p3 n p4
+  ⟩
+
+def encodeNatPre (p : Nat → Prop): IDSpec Nat := ⟨fun (q : Nat → Prop) => (∀ n, p n → q n),
+  by
+    intro p1 p2 p3 p4 n pn
+    specialize p4 n pn
+    exact p3 n p4
+⟩
+
+
+#check DijkstraVerify Id IDSpec IdObs Nat gt0 (do return 0)
