@@ -165,6 +165,10 @@ def encodeNatPre (p : Nat → Prop): IDSpec Nat := ⟨fun (q : Nat → Prop) => 
     exact p3 n p4
 ⟩
 
-
+theorem IDSpec.pure_iff_eq : DijkstraVerify Id IDSpec Nat (pure x) a ↔ x = a
+  := by simp [DijkstraVerify, DijkstraMonad.obs, LE.le, OMonad.le, pure]
+        constructor
+        intro h; apply h; rfl
+        intro h; cases h; intro; apply id
 
 #check DijkstraVerify Id IDSpec Nat gt0 (do return 0)
