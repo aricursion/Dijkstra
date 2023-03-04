@@ -141,7 +141,7 @@ instance [OrderedMonadTrans T] [LawfulOrderedMonadTrans T] : DijkstraMonad (T Id
 
 variable (σ : Type)
 
-def DijkstraVerify M [Monad M] W [OMonad W] [LawfulOMonad W] [D : DijkstraMonad M W] A (w : W A) (m : M A)  : Prop :=
+def DijkstraVerify M [Monad M] W [OMonad W] [LawfulOMonad W] [D : DijkstraMonad M W] A (w : W A) (m : M A) : Prop :=
   D.obs m ≤ w
 
 
@@ -171,4 +171,29 @@ theorem IDSpec.pure_iff_eq : DijkstraVerify Id IDSpec Nat (pure x) a ↔ x = a
         intro h; apply h; rfl
         intro h; cases h; intro; apply id
 
-#check DijkstraVerify Id IDSpec Nat gt0 (do return 0)
+def foldSpec (inv : α → Prop) : IDSpec α :=
+  ⟨ fun (p : α → Prop) => ∀ a, inv a → p a, by
+    intro p1 p2 hp hinv a ha
+    apply hp; apply hinv; exact ha ⟩
+
+theorem foldlInv (L : List τ) (inv : α → Prop) (f : α → τ → α) (init : α)
+    (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f a t))
+  : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldl f init) := by
+  intro post h
+  induction L generalizing init with
+  | nil =>
+    simp; apply h; assumption
+  | cons x xs ih =>
+    simp; apply ih; apply h_f; assumption
+
+theorem foldrInv (L : List τ) (inv : α → Prop) (f : τ → α → α) (init : α)
+    (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f t a))
+  : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldr f init) := by
+  intro post h
+  induction L generalizing post with
+  | nil =>
+    simp; apply h; assumption
+  | cons x xs ih =>
+    simp [DijkstraMonad.obs, foldSpec] at h ⊢
+    apply h; apply h_f; apply ih
+    simp [foldSpec]
