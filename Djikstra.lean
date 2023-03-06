@@ -129,9 +129,9 @@ instance : LawfulOMonad (StateT σ IDSpec) where
 
 
 instance {σ : Type} : DijkstraMonad (StateT σ Id) (StateT σ IDSpec) where
-  obs m := λ s => DijkstraMonad.obs (m s)
-  obsPure := by sorry
-  obsBind := by sorry
+  obs m := fun s => DijkstraMonad.obs (m s)
+  obsPure := rfl
+  obsBind := rfl
 
 
 instance [OrderedMonadTrans T] [LawfulOrderedMonadTrans T] : DijkstraMonad (T Id) (T IDSpec) where
@@ -145,27 +145,7 @@ def DijkstraVerify M [Monad M] W [OMonad W] [LawfulOMonad W] [D : DijkstraMonad 
   D.obs m ≤ w
 
 
-def IdObs {A : Type} (a : Id A) : IDSpec A := ⟨fun p => p a , by
-  intro p1 p2 p3 p4
-  exact p3 a p4
-  ⟩
-
-
-def gt0 : IDSpec (Nat) := ⟨fun (p : Nat → Prop) => (∀ n, n > 0 → p n), 
-  by
-  intros p1 _ p3 p4 n ng0
-  specialize p4 n ng0
-  exact p3 n p4
-  ⟩
-
-def encodeNatPre (p : Nat → Prop): IDSpec Nat := ⟨fun (q : Nat → Prop) => (∀ n, p n → q n),
-  by
-    intro p1 p2 p3 p4 n pn
-    specialize p4 n pn
-    exact p3 n p4
-⟩
-
-theorem IDSpec.pure_iff_eq : DijkstraVerify Id IDSpec Nat (pure x) a ↔ x = a
+theorem IDSpec.pure_iff_eq : DijkstraVerify Id IDSpec A (pure x) a ↔ x = a
   := by simp [DijkstraVerify, DijkstraMonad.obs, LE.le, OMonad.le, pure]
         constructor
         intro h; apply h; rfl
@@ -176,24 +156,99 @@ def foldSpec (inv : α → Prop) : IDSpec α :=
     intro p1 p2 hp hinv a ha
     apply hp; apply hinv; exact ha ⟩
 
-theorem foldlInv (L : List τ) (inv : α → Prop) (f : α → τ → α) (init : α)
-    (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f a t))
+def foldMSpec [Monad M] (inv : M α → Prop) : IDSpec (M α) :=
+  ⟨ fun (p : M α → Prop) => ∀ ma, inv ma → p ma, by 
+    intro p1 p2 hp hinv ma hma
+    apply hp; apply hinv; exact hma ⟩
+
+theorem foldlInv' (L : List τ) (inv : α → Prop) (f : α → τ → α) (init : α)
+    (h_init : inv init) (h_f : ∀ {a t}, t ∈ L → inv a → inv (f a t))
   : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldl f init) := by
   intro post h
   induction L generalizing init with
   | nil =>
     simp; apply h; assumption
   | cons x xs ih =>
-    simp; apply ih; apply h_f; assumption
+    simp; apply ih; apply h_f <;> simp [h_init, h_f]; 
+    intro a t ht inv_a
+    specialize @h_f a t 
+    simp [ht] at h_f
+    exact h_f inv_a
 
-theorem foldrInv (L : List τ) (inv : α → Prop) (f : τ → α → α) (init : α)
-    (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f t a))
+theorem foldlInv (L : List τ) (inv : α → Prop) (f : α → τ → α) (init : α)
+    (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f a t))
+  : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldl f init) := 
+    foldlInv' L inv f init h_init (@fun _ _ _ inv => h_f inv)
+
+theorem foldlMInv [Monad M] (A : Array τ) (inv : M α → Prop) (f : α → τ → M α) (init : α) (start := 0) (stop := A.size) 
+    (stop_h : stop ≤ A.size) (h_init : inv (pure init)) (h_f : ∀ {ma t}, inv ma → inv (ma >>= (fun a => f a t))) :
+    DijkstraVerify Id IDSpec (M α) (foldMSpec inv) (@Array.foldlM τ α M _ f init A start stop) := by 
+    intro post h
+    simp [DijkstraMonad.obs, Array.foldlM]
+    split <;> apply h <;> cases A
+    case inl L h_stop =>
+      induction L generalizing init with
+      | nil => 
+        simp [Array.size] at h_stop
+        rw [Array.foldlM.loop]
+        simp [h_stop]
+        assumption
+      | cons x xs ih => 
+        rw [Array.foldlM.loop]
+        split
+        case inl start_lt_stop => 
+          have : ∃ i', stop - start = Nat.succ i' := by sorry
+          cases this with
+          | _ i h_i =>
+            simp [*] at *
+            sorry
+    
+        case inr _ => exact h_init
+    case inr L h_stop => exfalso; exact h_stop stop_h
+    
+      
+
+theorem foldrInv' (L : List τ) (inv : α → Prop) (f : τ → α → α) (init : α)
+    (h_init : inv init) (h_f : ∀ {a t}, t ∈ L → inv a → inv (f t a))
   : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldr f init) := by
   intro post h
   induction L generalizing post with
   | nil =>
     simp; apply h; assumption
   | cons x xs ih =>
-    simp [DijkstraMonad.obs, foldSpec] at h ⊢
-    apply h; apply h_f; apply ih
+    simp [foldSpec] at h
+    apply h; apply h_f; 
+    simp only [List.mem_cons, true_or]; apply ih;
+    intro a t txs inva
+    apply h_f (by simp only [List.mem_cons, txs, or_true]) inva;
     simp [foldSpec]
+    
+theorem foldrInv (L : List τ) (inv : α → Prop) (f : τ → α → α) (init : α)
+    (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f t a))
+  : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldr f init) := 
+  foldrInv' L inv f init h_init (@fun _ _ _ inv => h_f inv)
+
+
+def sum_zeros (L : List Nat) (_ : ∀ x ∈ L, x = 0) := L.foldl (fun acc x => acc + x) 0
+
+
+--playing with stuff
+theorem sum_zeros_eq_zero (L : List Nat) (h : ∀ x ∈ L, x = 0) : sum_zeros L h = 0 := by
+  rw [sum_zeros]
+  induction L with 
+  | nil => simp
+  | cons x xs ih => 
+    rw [List.foldl]
+    have := h x (by simp)
+    simp [this]
+    apply ih
+    intro x' hx'
+    specialize h x'
+    simp [hx'] at h
+    exact h
+
+theorem sum_zeros_eq_zero' (L : List Nat) (h : ∀ x ∈ L, x = 0) : sum_zeros L h = 0 := by
+  have := foldlInv' L (fun a => a = 0) (fun acc x => acc + x) 0 rfl (@fun n m mL ih => by simp [*] at *; exact h m mL)
+  simp [DijkstraVerify, DijkstraMonad.obs, LE.le, OMonad.le, foldSpec] at this
+  exact this (fun n => n = 0) rfl
+
