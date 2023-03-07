@@ -156,11 +156,6 @@ def foldSpec (inv : α → Prop) : IDSpec α :=
     intro p1 p2 hp hinv a ha
     apply hp; apply hinv; exact ha ⟩
 
-def foldMSpec [Monad M] (inv : M α → Prop) : IDSpec (M α) :=
-  ⟨ fun (p : M α → Prop) => ∀ ma, inv ma → p ma, by 
-    intro p1 p2 hp hinv ma hma
-    apply hp; apply hinv; exact hma ⟩
-
 theorem foldlInv' (L : List τ) (inv : α → Prop) (f : α → τ → α) (init : α)
     (h_init : inv init) (h_f : ∀ {a t}, t ∈ L → inv a → inv (f a t))
   : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldl f init) := by
@@ -180,9 +175,23 @@ theorem foldlInv (L : List τ) (inv : α → Prop) (f : α → τ → α) (init 
   : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldl f init) := 
     foldlInv' L inv f init h_init (@fun _ _ _ inv => h_f inv)
 
-theorem foldlMInv [Monad M] (A : Array τ) (inv : M α → Prop) (f : α → τ → M α) (init : α) (start := 0) (stop := A.size) 
+
+#check List.foldlM
+
+theorem foldlMInv [Monad M] [LawfulMonad M] (L : List τ) (inv : M α → Prop) (f : α → τ → M α) (init : α)
+    (h_init : inv (pure init)) (h_f : ∀ {ma t}, inv ma → inv (ma >>= (fun a => f a t))) 
+    : DijkstraVerify Id IDSpec (M α) (foldSpec inv) (@List.foldlM M _ α τ f init L) := by
+    intro post h
+    induction L generalizing init with
+    | nil => simp; apply h; exact h_init
+    | cons x xs ih => 
+      simp [DijkstraMonad.obs] at *
+      sorry
+
+
+theorem foldlMInvArr [Monad M] (A : Array τ) (inv : M α → Prop) (f : α → τ → M α) (init : α) (start := 0) (stop := A.size) 
     (stop_h : stop ≤ A.size) (h_init : inv (pure init)) (h_f : ∀ {ma t}, inv ma → inv (ma >>= (fun a => f a t))) :
-    DijkstraVerify Id IDSpec (M α) (foldMSpec inv) (@Array.foldlM τ α M _ f init A start stop) := by 
+    DijkstraVerify Id IDSpec (M α) (foldSpec inv) (@Array.foldlM τ α M _ f init A start stop) := by 
     intro post h
     simp [DijkstraMonad.obs, Array.foldlM]
     split <;> apply h <;> cases A
@@ -202,7 +211,6 @@ theorem foldlMInv [Monad M] (A : Array τ) (inv : M α → Prop) (f : α → τ 
           | _ i h_i =>
             simp [*] at *
             sorry
-    
         case inr _ => exact h_init
     case inr L h_stop => exfalso; exact h_stop stop_h
     
@@ -227,28 +235,4 @@ theorem foldrInv (L : List τ) (inv : α → Prop) (f : τ → α → α) (init 
     (h_init : inv init) (h_f : ∀ {a t}, inv a → inv (f t a))
   : DijkstraVerify Id IDSpec α (foldSpec inv) (L.foldr f init) := 
   foldrInv' L inv f init h_init (@fun _ _ _ inv => h_f inv)
-
-
-def sum_zeros (L : List Nat) (_ : ∀ x ∈ L, x = 0) := L.foldl (fun acc x => acc + x) 0
-
-
---playing with stuff
-theorem sum_zeros_eq_zero (L : List Nat) (h : ∀ x ∈ L, x = 0) : sum_zeros L h = 0 := by
-  rw [sum_zeros]
-  induction L with 
-  | nil => simp
-  | cons x xs ih => 
-    rw [List.foldl]
-    have := h x (by simp)
-    simp [this]
-    apply ih
-    intro x' hx'
-    specialize h x'
-    simp [hx'] at h
-    exact h
-
-theorem sum_zeros_eq_zero' (L : List Nat) (h : ∀ x ∈ L, x = 0) : sum_zeros L h = 0 := by
-  have := foldlInv' L (fun a => a = 0) (fun acc x => acc + x) 0 rfl (@fun n m mL ih => by simp [*] at *; exact h m mL)
-  simp [DijkstraVerify, DijkstraMonad.obs, LE.le, OMonad.le, foldSpec] at this
-  exact this (fun n => n = 0) rfl
 
