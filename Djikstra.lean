@@ -122,10 +122,26 @@ instance : LawfulOMonad (StateT σ IDSpec) where
   le_refl := by simp [LE.le, OMonad.le, OrderedMonadTrans.le]
   le_trans := by simp (config := {contextual := true}) [LE.le, OMonad.le, OrderedMonadTrans.le]
   le_antisymm := by 
-    simp only [LE.le, OMonad.le, OrderedMonadTrans.le]
-    intros
-    sorry
-  bind_mono := sorry
+    intro _ a b ha hb; funext x; ext; funext p; ext; constructor; apply hb; apply ha
+  bind_mono := by
+    intro _ _ w1 w2 f1 f2 hw hf s p h
+    simp [bind, MonadTrans.bind, StateT.bind] at h ⊢
+    have := hw s
+    -- variable finagling
+    split; split at h
+    next a b c d e f g i j k l m =>
+    simp at h ⊢
+    generalize w1 s = w1' at *
+    generalize w2 s = w2' at *
+    subst_vars
+    clear hw w1 w2 s c d i j
+    -- back to meaningful proof
+    apply this
+    simp
+    refine l ?_ h
+    rintro ⟨x,y⟩
+    simp
+    apply hf
 
 
 instance {σ : Type} : DijkstraMonad (StateT σ Id) (StateT σ IDSpec) where
