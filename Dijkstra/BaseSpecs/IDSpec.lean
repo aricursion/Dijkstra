@@ -1,4 +1,4 @@
-import Dijkstra.DijkstraMonad
+import Dijkstra.OrderedMonad
 
 namespace Dijkstra
 
