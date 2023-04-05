@@ -27,7 +27,7 @@ namespace DijkstraMonad
 
 @[simp, reducible] def ofEffObs [Monad M] (obs : ∀ {A}, M A → W A) := λ A w => { m : M A // obs m ≤ w }
 
-instance [Monad M] [LawfulMonad M] [LawfulOrderedMonad W]
+instance instOfEffObs [Monad M] [LawfulMonad M] [LawfulOrderedMonad W]
   (obs_pure : ∀ {A} {a : A},
     obs (return a) = return a)
   (obs_bind : ∀ {A B} {m : M A} {f : A → M B},
