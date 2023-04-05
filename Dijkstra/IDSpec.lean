@@ -2,9 +2,9 @@ import Dijkstra.DijkstraMonad
 
 namespace Dijkstra
 
-def IDSpec (A) := { w : Cont Prop A // ∀ {p1 p2}, (∀ a, p1 a → p2 a) → w p1 → w p2}
+def IDSpec (A) := { w : Cont Prop A // ∀ {p1 p2}, (∀ a, p1 a → p2 a) → w p1 → w p2 }
 
-def IDSpec.assert (p : Prop) : IDSpec Unit := ⟨fun p' => p → p' (), by simp (config := {contextual := true})⟩
+namespace IDSpec
 
 instance : OrderedMonad IDSpec where
   pure a := ⟨(· a), (· a)⟩
@@ -15,7 +15,7 @@ instance : OrderedMonad IDSpec where
       match w' with | ⟨w',hw'⟩ => simp; apply hw'; exact mono⟩
   le w1 w2 := ∀ p, w2.val p → w1.val p
 
-@[ext] theorem IDSpec.ext (s1 s2 : IDSpec p) (h : s1.val = s2.val) : s1 = s2 := Subtype.ext _ _ h
+@[ext] theorem ext (s1 s2 : IDSpec p) (h : s1.val = s2.val) : s1 = s2 := Subtype.ext _ _ h
 
 instance : LawfulOrderedMonad IDSpec where
   map_const       := by intros; congr
@@ -40,7 +40,4 @@ instance : LawfulOrderedMonad IDSpec where
   | _w1, w2, f1, f2, h1, h2, p, h =>
     h1 _ (w2.property (λ a hf2 => h2 a _ hf2) h)
 
-instance : DijkstraMonad Id IDSpec where
-  obs a := ⟨(· a), (· a)⟩
-  obsPure := rfl
-  obsBind := rfl
+def assert (p : Prop) : IDSpec Unit := ⟨fun p' => p → p' (), by simp (config := {contextual := true})⟩
