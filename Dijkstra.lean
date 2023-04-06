@@ -1,5 +1,5 @@
 import Dijkstra.AuxDefs
-import Dijkstra.DijkstraMonad
+import Dijkstra.DMonad
 import Dijkstra.MonadTrans
 import Dijkstra.OrderedMonad
 

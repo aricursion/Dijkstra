@@ -23,7 +23,7 @@ class LawfulOrderedDMonad (D : ∀ A, W A → Type) extends LawfulDMonad D, Weak
 
 namespace DMonad
 
-@[simp, reducible] def verify {w : W A} [DMonad D] (ma : D A w) (w' : W A) := w ≤ w'
+@[simp, reducible] def verify {w : W A} [DMonad D] (_ : D A w) (w' : W A) := w ≤ w'
 
 @[simp, reducible] def ofEffObs [Monad M] (obs : ∀ {A}, M A → W A) := λ A w => { m : M A // obs m ≤ w }
 
@@ -43,11 +43,22 @@ instance instOfEffObs [Monad M] [LawfulMonad M] [LawfulOrderedMonad W]
       . exact pf
       . intro a; apply (f a).property⟩
   bind_ret := by
-    intros; simp; sorry
+    intros
+    simp
+    congr
+    · simp
+    · sorry
   bind_of_ret := by
-    intros; simp; sorry
+    intros
+    simp [cast]
+    congr
+    · simp
+    · sorry
   bind_assoc := by
-    intros; simp; sorry
+    intros
+    simp [cast]
+    congr
+    sorry
   weaken := by
     intro A w d w' h
     match d with
@@ -58,6 +69,3 @@ def toMonad (D : ∀ A, W A → Type) [DMonad D]
   : Monad (fun A => Σ w, D A w) where
   pure a := ⟨return a, ret a⟩
   bind m f := ⟨m.1 >>= (fun a => (f a).1), bind m.2 (fun a => (f a).2)⟩
-
-
-
