@@ -1,11 +1,11 @@
 import Dijkstra.DMonad
-import Dijkstra.BaseSpecs.IDSpec
+import Dijkstra.BaseSpecs
 
 namespace Dijkstra
 
-def DPure := DMonad.ofEffObs (M := Id) (W := IDSpec) (obs := pure)
+def DPure := DMonad.ofEffObs (M := Id) (W := WeakestPre) (obs := pure)
 
-instance : LawfulOrderedDMonad (W := IDSpec) DPure :=
+instance : LawfulOrderedDMonad (W := WeakestPre) DPure :=
   DMonad.instOfEffObs rfl rfl
 
 namespace Hidden
