@@ -1,5 +1,14 @@
 import Dijkstra.OrderedMonad
 
+/- This is an implementation of the SM language from the D4A paper.
+It should make it easier to prove the necessary conditions for
+generating Dijkstra monads from monad transformers.
+
+TODO: figure out how to implement (not sure if this
+"deeper shallow embedding" is the right way; the paper
+seems to use HOAS for the dependent arrow (as below) but
+de Bruijn indices for the monadic arrow (?)
+-/
 namespace Dijkstra.SM
 
 inductive SMType (M : Type → Type) : Type → Type 2
